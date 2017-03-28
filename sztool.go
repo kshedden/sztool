@@ -8,13 +8,15 @@
 //
 // Input and output can be specified as "-" to obtain stdin or stdout.
 //
-// The out parameter can be omitted, for compression it defaults to
-// in.sz, for decompression it defaults to stdout.
+// The out parameter can be omitted.  For compression it defaults to
+// in.sz, where in is the input file.  For decompression it defaults
+// to stdout.
 
 package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -28,8 +30,15 @@ var (
 )
 
 const (
-	bufsize int = 1024
+	bufsize int = 64 * 1024
 )
+
+func errclose(c io.Closer) {
+	err := c.Close()
+	if err != nil {
+		os.Stderr.WriteString(fmt.Sprintf("%v", err))
+	}
+}
 
 func decompress() {
 
@@ -43,14 +52,17 @@ func decompress() {
 		} else if err != nil {
 			panic(err)
 		}
-		out.Write(buf[0:n])
+		_, err = out.Write(buf[0:n])
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
 func compress() {
 
 	wtr := snappy.NewBufferedWriter(out)
-	defer wtr.Close()
+	defer errclose(wtr)
 	buf := make([]byte, bufsize)
 
 	for {
@@ -60,7 +72,10 @@ func compress() {
 		} else if err != nil {
 			panic(err)
 		}
-		wtr.Write(buf[0:n])
+		_, err = wtr.Write(buf[0:n])
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -71,27 +86,33 @@ func main() {
 	flag.Parse()
 
 	if *dec && *cmp {
-		print("can't set both -d and -c")
+		os.Stderr.WriteString("sztool: can't set both -d and -c\n")
+		os.Exit(1)
+	}
+	if !(*dec || *cmp) {
+		os.Stderr.WriteString("sztool: either -d or -c must be set\n")
 		os.Exit(1)
 	}
 
 	narg := len(flag.Args())
-	if narg != 1 && narg != 2 {
-		print("wrong number of arguments")
+	if narg < 1 || narg > 2 {
+		os.Stderr.WriteString("sztool: wrong number of arguments\n")
 		os.Exit(1)
 	}
 
 	infile := flag.Args()[0]
 	if *cmp && strings.HasSuffix(infile, ".sz") {
-		print("input is already compressed\n")
+		os.Stderr.WriteString("sztool: input is already compressed\n")
 		os.Exit(1)
 	}
+
+	// Get the output file name (or use stdout).
 	var outfile string
 	if narg == 2 {
 		outfile = flag.Args()[1]
 	} else {
 		if *dec {
-			outfile = "-"
+			outfile = "-" // use stdout
 		} else {
 			outfile = infile + ".sz"
 		}
@@ -106,7 +127,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		defer in.Close()
+		defer errclose(in)
 	}
 
 	// Setup output io.Writer
@@ -117,7 +138,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		defer out.Close()
+		defer errclose(out)
 	}
 
 	if *dec {
