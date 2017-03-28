@@ -6,9 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"testing"
 )
 
-func TestWriteRead1() {
+func TestWriteRead1(t *testing.T) {
 
 	fid, err := os.Create("tmp.txt")
 	if err != nil {
@@ -62,9 +63,4 @@ func TestWriteRead1() {
 			panic("")
 		}
 	}
-}
-
-func main() {
-
-	TestWriteRead1()
 }

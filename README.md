@@ -1,6 +1,8 @@
 __sztool__ is a simple command-line tool for working with
 [snappy](https://en.wikipedia.org/wiki/Snappy_(compression))
-compressed files, similar to the `gzip` command for gzipped files.
+compressed files, similar to the
+[gzip](http://www.gnu.org/software/gzip/manual/gzip.html) command for
+gzipped files.
 
 The basic usage for compression is:
 
